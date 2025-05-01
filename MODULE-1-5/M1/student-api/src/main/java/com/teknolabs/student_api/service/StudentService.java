@@ -5,6 +5,10 @@ import com.teknolabs.student_api.model.Student;
 import com.teknolabs.student_api.model.StudentStatus;
 import com.teknolabs.student_api.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +24,7 @@ public class StudentService {
     @Autowired
     private StudentRepository studentRepository;
 
+    @Cacheable(value = "students")
     @Transactional(readOnly = true)
     public List<Student> getAllStudents() {
         return studentRepository.findAll();
@@ -30,31 +35,41 @@ public class StudentService {
         return studentRepository.findAll(pageable);
     }
 
+    @Cacheable(value = "students", key = "#id")
     @Transactional(readOnly = true)
     public Optional<Student> getStudentById(Long id) {
         return studentRepository.findById(id);
     }
 
+    @CachePut(value = "students", key = "#result.id")
+    @CacheEvict(value = "students", key = "'allStudents'")
     @Transactional
     public Student saveStudent(Student student) {
         return studentRepository.save(student);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "students", key = "#id"),
+        @CacheEvict(value = "students", key = "'allStudents'")
+    })
     @Transactional
     public void deleteStudent(Long id) {
         studentRepository.deleteById(id);
     }
 
+    @Cacheable(value = "students", key = "'search:' + #keyword")
     @Transactional(readOnly = true)
     public Page<Student> searchStudents(String keyword, Pageable pageable) {
         return studentRepository.searchStudents(keyword, pageable);
     }
 
+    @Cacheable(value = "students", key = "'name:' + #name")
     @Transactional(readOnly = true)
     public Page<Student> findByNameContaining(String name, Pageable pageable) {
         return studentRepository.findByNameContainingIgnoreCase(name, pageable);
     }
 
+    @Cacheable(value = "students", key = "'status:' + #status")
     @Transactional(readOnly = true)
     public List<Student> findByStatus(StudentStatus status) {
         return studentRepository.findByStatus(status);
